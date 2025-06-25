@@ -5,7 +5,6 @@
 /.envrc
 
 /result
-/flake.lock
 
 *~
 *.swp
