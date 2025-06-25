@@ -3,7 +3,7 @@
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-  outputs = { nixpkgs, ... }: let
+  outputs = { self, nixpkgs, ... }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
 
@@ -25,10 +25,12 @@
     ];
 
     devTools = with pkgs; [
-      emscripten
+      # emscripten
       clang-tools
       bear
     ];
+    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
+    INCLUDE_PATH = pkgs.lib.makeIncludePath buildInputs;
 
   in {
     devShells.${system}.default = pkgs.mkShell {
@@ -38,8 +40,8 @@
         export CXX=clang++
         export LD=clang
         export CFLAGS="-fuse-ld=mold"
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath buildInputs}
-        export INCLUDE_PATH=$INCLUDE_PATH:${pkgs.lib.makeIncludePath buildInputs}
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${LD_LIBRARY_PATH}
+        export INCLUDE_PATH=$INCLUDE_PATH:${INCLUDE_PATH}
       '';
     };
 
@@ -57,9 +59,25 @@
         cp bin/game $out/bin/
       '';
 
+      postInstall = ''
+        wrapProgram $out/bin/game --prefix LD_LIBRARY_PATH : ${LD_LIBRARY_PATH}
+      '';
+
       installCheckPhase = "true";
-      # dontFixup = true;
-      meta.mainProgram = "game";
+      meta = {
+        description = "Raylib demo";
+        platforms = [ "x86_64-linux" ];
+        mainProgram = "game";
+      };
     };
+
+    apps.${system}.default = {
+        type = "app";
+        program = "${self.packages.${system}.default}/bin/game";
+    };
+
+    defaultPackage = self.packages.${system}.default;
+    defaultApp = self.apps.${system}.default;
+
   };
 }
